@@ -1,0 +1,209 @@
+// Categorias
+use ecommerce_db;
+
+// 1. Consulta de lecturas (10)
+
+
+//1: Filtrar categoría principal por su nombre exacto.
+db.categorias.find({ nombre: "Electrónica" }).pretty();
+
+//2: Buscar subcategorías de primer nivel en el documento embebido.
+db.categorias.find({ "subcategoria.nivel": 1 }).pretty();
+
+//3: Buscar subcategorías específicas por su nombre.
+db.categorias.find({ "subcategoria.nombre": "Computación" }).pretty();
+
+//4: Buscar categorías que no tienen productos asignados.
+db.categorias.find({ productos: { $size: 0 } }).pretty();
+
+//5: Filtrar usando "$in" para buscar múltiples nombres de categorías a la vez.
+db.categorias.find({ nombre: { $in: ["Electrónica", "Hogar", "Deportes"] } }).pretty();
+
+//6: Buscar categorías que tengan al menos un producto (usando el operador $not con $size).
+db.categorias.find({ productos: { $not: { $size: 0 } } }).pretty();
+
+//7: Consulta con $and lógico para buscar por nombre y nivel de subcategoría.
+db.categorias.find({ 
+  $and: [
+    { nombre: "Electrónica" },
+    { "subcategoria.nivel": 2 }
+  ] 
+}).pretty();
+
+//8: Consulta con $or para encontrar categorías que sean de Computación o Telefonía.
+db.categorias.find({ 
+  $or: [
+    { "subcategoria.nombre": "Computación" },
+    { "subcategoria.nombre": "Telefonía" }
+  ] 
+}).pretty();
+
+//9: Búsqueda mediante expresión para categorías que empiecen con "Elec".
+db.categorias.find({ nombre: { $regex: "^Elec" } }).pretty();
+
+//10: Buscar una categoría por su _id específico (útil para validaciones exactas).
+db.categorias.find({ _id: ObjectId("000000000001") }).pretty();
+
+
+// 2. Actualizaciones (10)
+
+// 1: Renombrar una categoría principal específica.
+db.categorias.updateOne(
+  { nombre: "Electrónica" },
+  { $set: { nombre: "Tecnología y Electrónica" } }
+);
+
+// 2: Modificar el nombre de una subcategoría en el documento embebido.
+db.categorias.updateOne(
+  { "subcategoria.nombre": "Computación" },
+  { $set: { "subcategoria.nombre": "Computación e Informática" } }
+);
+
+// 3: Cambiar la jerarquía de una subcategoría.
+db.categorias.updateOne(
+  { "subcategoria.nombre": "Computación e Informática" },
+  { $set: { "subcategoria.nivel": 1 } }
+);
+
+// 4: Agregar un campo descriptivo a una categoría.
+db.categorias.updateOne(
+  { nombre: "Tecnología y Electrónica" },
+  { $set: { descripcion: "Categoría principal de artículos tecnológicos" } }
+);
+
+// 5: Agregar el estado activo a todas las categorías mediante updateMany.
+db.categorias.updateMany(
+  {},
+  { $set: { estado: "activo" } }
+);
+
+// 6: Eliminar un campo previamente agregado usando $unset.
+db.categorias.updateOne(
+  { nombre: "Tecnología y Electrónica" },
+  { $unset: { descripcion: "" } }
+);
+
+// 7: Renombrar un campo existente en todos los documentos con $rename.
+db.categorias.updateMany(
+  {},
+  { $rename: { "estado": "status_categoria" } }
+);
+
+// 8: Aumentar en 1 el nivel de todas las subcategorías usando $inc.
+db.categorias.updateMany(
+  {},
+  { $inc: { "subcategoria.nivel": 1 } }
+);
+
+// 9: Agregar un nuevo producto (ObjectId ficticio) al arreglo de referencias inversas.
+db.categorias.updateOne(
+  { nombre: "Tecnología y Electrónica" },
+  { $push: { productos: ObjectId("650a1b2c3d4e5f6a7b8c9d99") } }
+);
+
+// 10: Retirar un producto específico del arreglo de referencias inversas usando $pull.
+db.categorias.updateOne(
+  { nombre: "Tecnología y Electrónica" },
+  { $pull: { productos: ObjectId("650a1b2c3d4e5f6a7b8c9d99") } }
+);
+
+
+// 3. Eliminaciones (50)
+db.categorias.deleteMany({
+  estado_categoria: "Fusionada",
+  productos: { $size: 0 }
+});;
+
+// 4. Agregaciones (10)
+// 1: $lookup con productos para calcular cuántos productos tiene cada categoría.
+db.categorias.aggregate([
+  {
+    $lookup: {
+      from: "productos",
+      localField: "productos",
+      foreignField: "_id",
+      as: "detalle_productos"
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      nombreCategoria: "$nombre",
+      cantidadProductos: { $size: "$detalle_productos" }
+    }
+  }
+]);
+
+//2: Agrupar por nivel de subcategoría y contar el total.
+db.categorias.aggregate([
+  {
+    $group: {
+      _id: "$subcategoria.nivel",
+      totalCategorias: { $sum: 1 }
+    }
+  },
+  { $sort: { totalCategorias: -1 } }
+]);
+
+//3: Mostrar categorías ordenadas alfabéticamente excluyendo el _id.
+db.categorias.aggregate([
+  { $match: { nombre: { $exists: true } } },
+  { $project: { nombre: 1, "subcategoria.nombre": 1, _id: 0 } },
+  { $sort: { nombre: 1 } }
+]);
+
+//4: Calcular la cantidad de productos basándose en el arreglo interno sin hacer lookup.
+db.categorias.aggregate([
+  {
+    $project: {
+      nombre: 1,
+      total_referencias: { $size: "$productos" }
+    }
+  }
+]);
+
+//5: Agrupar por nombre principal todas las subcategorías dentro de su categoría padre.
+db.categorias.aggregate([
+  {
+    $group: {
+      _id: "$nombre",
+      subcategorias_lista: { $push: "$subcategoria.nombre" }
+    }
+  }
+]);
+
+//6: Filtrar solo categorías de nivel 2 y limitar el resultado.
+db.categorias.aggregate([
+  { $match: { "subcategoria.nivel": 2 } },
+  { $limit: 5 }
+]);
+
+//7: Contar el número total de categorías principales usando $count.
+db.categorias.aggregate([
+  { $match: { nombre: { $exists: true } } },
+  { $count: "total_categorias_registradas" }
+]);
+
+//8: Desglosar (unwind) el arreglo de productos para tener un documento por referencia.
+db.categorias.aggregate([
+  { $unwind: "$productos" },
+  { $project: { nombre: 1, productos: 1 } },
+  { $limit: 3 }
+]);
+
+//9: Obtener las 3 categorías con los nombres más largos.
+db.categorias.aggregate([
+  { $project: { nombre: 1, longitudNombre: { $strLenCP: "$nombre" } } },
+  { $sort: { longitudNombre: -1 } },
+  { $limit: 3 }
+]);
+
+//10: Listar categorías excluyendo arreglos para vistas simplificadas.
+db.categorias.aggregate([
+  {
+    $project: {
+      productos: 0,
+      status_categoria: 0
+    }
+  }
+]);
