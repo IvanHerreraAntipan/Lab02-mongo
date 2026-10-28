@@ -6,18 +6,17 @@ const regiones = ["Metropolitana", "Valparaíso", "Biobío", "Antofagasta"];
 const comunas = ["Santiago", "Providencia", "Las Condes", "Maipú"];
 const representantes = ["Juan Pérez", "María González", "Carlos Silva", "Ana Morales", "Roberto Díaz"];
 
-for (let i = 1; i <= 500; i++) {
+for (let i = 1; i <= 50; i++) {
   const pais = paises[i % paises.length];
   const region = regiones[i % regiones.length];
   const comuna = comunas[i % comunas.length];
   const rep = representantes[i % representantes.length];
-  
-  // Para garantizar exactamente 50 registros para eliminar
-  const estadoContrato = (i <= 50) ? "Finalizado" : ((i % 2 === 0) ? "Activo" : "En Revision");
-  const estaActivo = (i > 50);
+  const estadoContrato = (i % 3 === 0) ? "Finalizado" : ((i % 2 === 0) ? "Activo" : "En Revision");
+  const estaActivo = (estadoContrato !== "Finalizado");
 
   proveedores.push({
     nombre: `Proveedor_Tech_${i} SpA`,
+    es_prueba: true,
     representante: rep,
     telefono: `+5690000${i.toString().padStart(4, '0')}`,
     pais_origen: pais,
@@ -82,78 +81,70 @@ db.proveedores.find({ activo: true, "direcciones.region": { $ne: "Valparaíso" }
 // Buscar proveedores con contratos "En Revision" o "Finalizado"
 db.proveedores.find({ estado_contrato: { $in: ["En Revision", "Finalizado"] } });
 
-// ============================== 10 ACTUALIZACIONES (UPDATE) ==============================
+// ========================= 10 ACTUALIZACIONES (UPDATE) =========================
 
 // Actualizar el teléfono de contacto de un proveedor específico
 db.proveedores.updateOne(
-  { nombre: "Proveedor_Tech_100 SpA" },
+  { nombre: "Proveedor_Tech_10 SpA", es_prueba: true },
   { $set: { telefono: "+56999999999" } }
 );
 
 // Cambiar la comuna de la oficina Matriz de los proveedores de la región Antofagasta
 db.proveedores.updateMany(
-  { "direcciones.region": "Antofagasta" },
+  { "direcciones.region": "Antofagasta", es_prueba: true },
   { $set: { "direcciones.$[elem].comuna": "Antofagasta Centro" } },
   { arrayFilters: [{ "elem.tipo": "Matriz" }] }
 );
 
 // Modificar el nombre del representante para los proveedores de "Alemania"
 db.proveedores.updateMany(
-  { pais_origen: "Alemania" },
+  { pais_origen: "Alemania", es_prueba: true },
   { $set: { representante: "Hans Gruber" } }
 );
 
 // Actualizar email del contacto principal de los proveedores en revisión
 db.proveedores.updateMany(
-  { estado_contrato: "En Revision" },
+  { estado_contrato: "En Revision", es_prueba: true },
   { $set: { "contacto.email": "auditoria@proveedor.com" } }
 );
 
 // Desactivar proveedores con 0 órdenes asociadas
 db.proveedores.updateMany(
-  { ordenes_asociadas_count: 0 },
+  { ordenes_asociadas_count: { $lt: 20 }, es_prueba: true },
   { $set: { activo: false } }
 );
 
 // Renombrar un proveedor cambiando su razón social
 db.proveedores.updateOne(
-  { nombre: "Proveedor_Tech_200 SpA" },
-  { $set: { nombre: "Proveedor_Tech_200 Internacional SpA" } }
+  { nombre: "Proveedor_Tech_20 SpA", es_prueba: true },
+  { $set: { nombre: "Proveedor_Tech_20 Internacional SpA" } }
 );
 
 // Agregar una nueva dirección embebida tipo "Bodega" a un proveedor
 db.proveedores.updateOne(
-  { nombre: "Proveedor_Tech_50 SpA" },
+  { nombre: "Proveedor_Tech_50 SpA", es_prueba: true },
   { $push: { direcciones: { tipo: "Bodega", calle: "Ruta 5 Norte Km 20", comuna: "Lampa", ciudad: "Santiago", region: "Metropolitana" } } }
 );
 
 // Incrementar el conteo de órdenes asociadas en 10 para proveedores en Chile
 db.proveedores.updateMany(
-  { pais_origen: "Chile" },
+  { pais_origen: "Chile", es_prueba: true },
   { $inc: { ordenes_asociadas_count: 10 } }
 );
 
 // Cambiar el estado de contrato a "Renovado" para proveedores activos con más de 150 órdenes
 db.proveedores.updateMany(
-  { activo: true, ordenes_asociadas_count: { $gt: 150 } },
+  { activo: true, ordenes_asociadas_count: { $gt: 150 }, es_prueba: true },
   { $set: { estado_contrato: "Renovado" } }
 );
 
 // Modificar el teléfono directo de la estructura embebida contacto
 db.proveedores.updateOne(
-  { nombre: "Proveedor_Tech_1 SpA" },
+  { nombre: "Proveedor_Tech_1 SpA", es_prueba: true },
   { $set: { "contacto.telefono_directo": "+56229998888" } }
 );
 
-// ============================== 50 ELIMINACIONES (DELETE) ==============================
-
-// Eliminar 50 proveedores con contratos finalizados e inactivos (registros del 1 al 50)
-db.proveedores.deleteMany({
-  estado_contrato: "Finalizado",
-  activo: false
-});
-
-// ============================== 10 AGREGACIONES (AGGREGATE) ==============================
+// =================== 10 AGREGACIONES (AGGREGATE) ===================
 
 // Conteo de proveedores por país de origen
 db.proveedores.aggregate([
@@ -232,3 +223,6 @@ db.proveedores.aggregate([
   },
   { $sort: { "_id.pais": 1 } }
 ]);
+
+// ======== 50 ELIMINACIONES (DELETE) ========
+db.proveedores.deleteMany({ es_prueba: true });
