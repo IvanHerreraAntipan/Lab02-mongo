@@ -3,46 +3,45 @@ use ecommerce_db;
 
 // 1. Consulta de lecturas (10)
 
-
-//1: Filtrar categoría principal por su nombre exacto.
+// 1: Filtrar categoría principal por su nombre exacto.
 db.categorias.find({ nombre: "Electrónica" }).pretty();
 
-//2: Buscar subcategorías de primer nivel en el documento embebido.
+// 2: Buscar subcategorías de primer nivel en el documento embebido.
 db.categorias.find({ "subcategoria.nivel": 1 }).pretty();
 
-//3: Buscar subcategorías específicas por su nombre.
+// 3: Buscar subcategorías específicas por su nombre.
 db.categorias.find({ "subcategoria.nombre": "Computación" }).pretty();
 
-//4: Buscar categorías que no tienen productos asignados.
+// 4: Buscar categorías que no tienen productos asignados.
 db.categorias.find({ productos: { $size: 0 } }).pretty();
 
-//5: Filtrar usando "$in" para buscar múltiples nombres de categorías a la vez.
+// 5: Filtrar usando "$in" para buscar múltiples nombres de categorías a la vez.
 db.categorias.find({ nombre: { $in: ["Electrónica", "Hogar", "Deportes"] } }).pretty();
 
-//6: Buscar categorías que tengan al menos un producto (usando el operador $not con $size).
+// 6: Buscar categorías que tengan al menos un producto (usando el operador $not con $size).
 db.categorias.find({ productos: { $not: { $size: 0 } } }).pretty();
 
-//7: Consulta con $and lógico para buscar por nombre y nivel de subcategoría.
-db.categorias.find({ 
+// 7: Consulta con $and lógico para buscar por nombre y nivel de subcategoría.
+db.categorias.find({
   $and: [
     { nombre: "Electrónica" },
     { "subcategoria.nivel": 2 }
-  ] 
+  ]
 }).pretty();
 
-//8: Consulta con $or para encontrar categorías que sean de Computación o Telefonía.
-db.categorias.find({ 
+// 8: Consulta con $or para encontrar categorías que sean de Computación o Telefonía.
+db.categorias.find({
   $or: [
     { "subcategoria.nombre": "Computación" },
     { "subcategoria.nombre": "Telefonía" }
-  ] 
+  ]
 }).pretty();
 
-//9: Búsqueda mediante expresión para categorías que empiecen con "Elec".
+// 9: Búsqueda mediante expresión para categorías que empiecen con "Elec".
 db.categorias.find({ nombre: { $regex: "^Elec" } }).pretty();
 
-//10: Buscar una categoría por su _id específico (útil para validaciones exactas).
-db.categorias.find({ _id: ObjectId("000000000001") }).pretty();
+// 10: Buscar una categoría por su _id específico (24 caracteres hexadecimales).
+db.categorias.find({ _id: ObjectId("000000000000000000000001") }).pretty();
 
 
 // 2. Actualizaciones (10)
@@ -112,9 +111,11 @@ db.categorias.updateOne(
 db.categorias.deleteMany({
   estado_categoria: "Fusionada",
   productos: { $size: 0 }
-});;
+});
+
 
 // 4. Agregaciones (10)
+
 // 1: $lookup con productos para calcular cuántos productos tiene cada categoría.
 db.categorias.aggregate([
   {
@@ -134,7 +135,7 @@ db.categorias.aggregate([
   }
 ]);
 
-//2: Agrupar por nivel de subcategoría y contar el total.
+// 2: Agrupar por nivel de subcategoría y contar el total.
 db.categorias.aggregate([
   {
     $group: {
@@ -145,14 +146,14 @@ db.categorias.aggregate([
   { $sort: { totalCategorias: -1 } }
 ]);
 
-//3: Mostrar categorías ordenadas alfabéticamente excluyendo el _id.
+// 3: Mostrar categorías ordenadas alfabéticamente excluyendo el _id.
 db.categorias.aggregate([
   { $match: { nombre: { $exists: true } } },
   { $project: { nombre: 1, "subcategoria.nombre": 1, _id: 0 } },
   { $sort: { nombre: 1 } }
 ]);
 
-//4: Calcular la cantidad de productos basándose en el arreglo interno sin hacer lookup.
+// 4: Calcular la cantidad de productos basándose en el arreglo interno sin hacer lookup.
 db.categorias.aggregate([
   {
     $project: {
@@ -162,7 +163,7 @@ db.categorias.aggregate([
   }
 ]);
 
-//5: Agrupar por nombre principal todas las subcategorías dentro de su categoría padre.
+// 5: Agrupar por nombre principal todas las subcategorías dentro de su categoría padre.
 db.categorias.aggregate([
   {
     $group: {
@@ -172,33 +173,33 @@ db.categorias.aggregate([
   }
 ]);
 
-//6: Filtrar solo categorías de nivel 2 y limitar el resultado.
+// 6: Filtrar solo categorías de nivel 2 y limitar el resultado.
 db.categorias.aggregate([
   { $match: { "subcategoria.nivel": 2 } },
   { $limit: 5 }
 ]);
 
-//7: Contar el número total de categorías principales usando $count.
+// 7: Contar el número total de categorías principales usando $count.
 db.categorias.aggregate([
   { $match: { nombre: { $exists: true } } },
   { $count: "total_categorias_registradas" }
 ]);
 
-//8: Desglosar (unwind) el arreglo de productos para tener un documento por referencia.
+// 8: Desglosar (unwind) el arreglo de productos para tener un documento por referencia.
 db.categorias.aggregate([
   { $unwind: "$productos" },
   { $project: { nombre: 1, productos: 1 } },
   { $limit: 3 }
 ]);
 
-//9: Obtener las 3 categorías con los nombres más largos.
+// 9: Obtener las 3 categorías con los nombres más largos.
 db.categorias.aggregate([
   { $project: { nombre: 1, longitudNombre: { $strLenCP: "$nombre" } } },
   { $sort: { longitudNombre: -1 } },
   { $limit: 3 }
 ]);
 
-//10: Listar categorías excluyendo arreglos para vistas simplificadas.
+// 10: Listar categorías excluyendo arreglos para vistas simplificadas.
 db.categorias.aggregate([
   {
     $project: {
